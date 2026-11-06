@@ -147,6 +147,38 @@ The Host `ctx.workspaceFiles` service and generated `workspaceFiles` Remote name
 - **`browser`** — multi-instance `builtin`, opened as `openTab('browser', { params: { url? } })`. Chat's [link preference](../../packages/client/ui-chat/README.md) controls whether Assistant Markdown opens HTTP(S) links here. It accepts public and loopback HTTP(S) targets under the default sandbox, rejects local files in favor of Document Preview, and uses application-known iframe history ([README](../../packages/client/ui-sidebar-browser/README.md)).
 - **`subagentchat`** — `builtin`, `dsh-resource://subagentchat/session/<child>?parent=<parent>&mode=<mode>`. An explicitly addressed subagent Conversation retained by the resource provider and rendered through the shared Conversation Factory ([README](../../packages/client/ui-subagent/README.md)).
 
+<!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
+
+<a id="cordis-surface"></a>
+
+## Cordis API
+
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="sidebar-browser-events"></a>
+
+### `sidebar-browser/*` events
+
+<a id="sidebar-browserrequest--waterfall"></a>
+
+#### `sidebar-browser/request` — waterfall
+
+Delegate a browser operation to a desktop connected to this Agent's Session.
+
+```ts cordis-catalog
+/**
+ * Delegate a browser operation to a desktop connected to this Agent's Session.
+ * @param request - command and cancellation lifetime; the Agent identifies the remote scope.
+ * @mode waterfall
+ */
+'sidebar-browser/request'(this: Scoped<Agent>, request: { readonly agent: Agent; readonly command: SidebarBrowserCommand; readonly signal: AbortSignal }, next: () => Promise<SidebarBrowserResult>): Promise<SidebarBrowserResult>
+```
+
+Types: [Agent](core.md) · [Scoped](scope.md)
+
+Source: [`packages/client/ui-sidebar-browser/src/types.ts`](../../packages/client/ui-sidebar-browser/src/types.ts)
+<!-- END GENERATED cordis-surface -->
+
 <a id="not-built"></a>
 ## Not built
 

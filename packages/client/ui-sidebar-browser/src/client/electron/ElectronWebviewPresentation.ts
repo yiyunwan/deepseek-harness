@@ -15,6 +15,8 @@ export interface WebviewElement extends HTMLElement {
   goForward(): void
   reload(): void
   isLoading(): boolean
+  executeJavaScript(code: string, userGesture: boolean): Promise<unknown>
+  sendInputEvent(event: { type: 'keyDown' | 'keyUp'; keyCode: string }): Promise<void>
 }
 
 /** Physical attachment notifications; hiding a retained Sidebar body emits neither. */

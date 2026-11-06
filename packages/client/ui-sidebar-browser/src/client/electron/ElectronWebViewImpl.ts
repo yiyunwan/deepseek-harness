@@ -1,7 +1,8 @@
 /** Electron navigation and guest lifetime, independent from DOM placement. */
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { DesktopBrowserBridge, DesktopBrowserLeaseId } from '../../types.ts'
+import type { DesktopBrowserBridge, DesktopBrowserLeaseId, SidebarBrowserCommand, SidebarBrowserPage } from '../../types.ts'
 import type { ElectronWebviewPresentation, WebviewElement } from './ElectronWebviewPresentation.ts'
+import { controlBrowserGuest, parseBrowserCommand } from './browser-automation.ts'
 import { emptyBrowserFrame, type BrowserFrame, type BrowserFrameState, type BrowserLoadError } from '../browser/BrowserFrame.ts'
 import type { BrowserPageOptions } from '../browser/BrowserPage.ts'
 import { browserAddressCheckpoint, currentBrowserTarget } from '../browser/BrowserPersistence.ts'
@@ -30,6 +31,7 @@ export class ElectronWebViewImpl implements BrowserFrame {
   private disposal: Promise<void> | undefined
   private attachment: AbortController | undefined
   private readonly releases = new Set<Promise<void>>()
+  private controlling = false
 
   /**
    * @param options - saved address, persistence and source-tab opening callback.
@@ -48,6 +50,63 @@ export class ElectronWebViewImpl implements BrowserFrame {
   getSnapshot = (): BrowserFrameState => this.store.getSnapshot()
   /** @param listener - state invalidation. @returns unsubscribe callback. */
   subscribe = (listener: () => void): (() => void) => this.store.subscribe(listener)
+
+  /**
+   * Wait for the document and control its approved native guest.
+   * @param command - fixed native page operation.
+   * @param signal - pending request lifetime.
+   * @returns bounded page observation.
+   */
+  async control(command: SidebarBrowserCommand, signal: AbortSignal): Promise<SidebarBrowserPage> {
+    command = parseBrowserCommand(command)
+    signal = AbortSignal.any([signal, this.lifetime.signal, AbortSignal.timeout(command.timeoutMs)])
+    if (this.controlling) throw new Error('Another browser operation is still running in this tab.')
+    this.controlling = true
+    try {
+      await this.waitReady(signal)
+      const element = this.element
+      const guestLifetime = this.guestLifetime
+      if (element === undefined || guestLifetime === undefined) throw new Error('Browser guest is unavailable.')
+      signal = AbortSignal.any([signal, guestLifetime.signal])
+      if (command.action === 'navigate') {
+        const parsed = parseBrowserAddress(command.url ?? '', location.origin)
+        if (!parsed.ok) throw new Error(`Invalid browser URL: ${parsed.reason}`)
+        this.loadUrl(parsed.target)
+      } else if (command.action === 'back') {
+        if (!this.getSnapshot().canGoBack) throw new Error('No previous browser page.')
+        this.goBack()
+      } else if (command.action === 'forward') {
+        if (!this.getSnapshot().canGoForward) throw new Error('No next browser page.')
+        this.goForward()
+      } else if (command.action === 'reload') this.reload()
+      await this.waitReady(signal)
+      const page = await controlBrowserGuest(element, command)
+      signal.throwIfAborted()
+      return page
+    } finally {
+      this.controlling = false
+    }
+  }
+
+  private async waitReady(signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (!this.ready || this.store.getSnapshot().loading || this.store.getSnapshot().address !== 'observed') {
+      await new Promise<void>((resolve, reject) => {
+        const cancel = (): void => { unsubscribe(); signal.removeEventListener('abort', cancel); reject(new Error('Browser operation cancelled.', { cause: signal.reason })) }
+        const check = (): void => {
+          if (this.lifetime.signal.aborted || this.store.getSnapshot().error !== undefined) {
+            unsubscribe(); signal.removeEventListener('abort', cancel); reject(new Error('Browser page could not load.'))
+          } else if (this.ready && !this.store.getSnapshot().loading && this.store.getSnapshot().address === 'observed') {
+            unsubscribe(); signal.removeEventListener('abort', cancel); resolve()
+          }
+        }
+        const unsubscribe = this.subscribe(check)
+        signal.addEventListener('abort', cancel, { once: true })
+        check()
+      })
+    }
+    signal.throwIfAborted()
+  }
 
   /** A physical mount may recreate a lost guest; ordinary Sidebar hiding never calls this. */
   attach(): void {
@@ -142,11 +201,11 @@ export class ElectronWebViewImpl implements BrowserFrame {
   }
 
   private async createGuest(attachmentSignal: AbortSignal): Promise<void> {
+    const cancelled = (): boolean => attachmentSignal.aborted
     this.workspaceKey ??= await this.workspace(attachmentSignal)
-    if (attachmentSignal.aborted) return
+    if (cancelled()) return
     const reservation = await this.bridge.acquire(this.workspaceKey)
-    // oxlint-disable-next-line typescript/no-unnecessary-condition -- The signal can abort while acquire is pending.
-    if (attachmentSignal.aborted) { await this.release(reservation.lease); return }
+    if (cancelled()) { await this.release(reservation.lease); return }
     this.lease = reservation.lease
     this.guestLifetime = new AbortController()
     const signal = AbortSignal.any([attachmentSignal, this.guestLifetime.signal])

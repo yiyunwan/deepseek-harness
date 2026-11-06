@@ -1,0 +1,8 @@
+version: 1
+scenario: sidebar-browser-unavailable
+profile: headless
+composition: sidebar-browser-unavailable
+recording: authored
+header:
+  class: sidebar-browser-unavailable
+  pin: true

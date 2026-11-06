@@ -6,6 +6,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import { BrowserBody, type BrowserBodyProps } from './view/BrowserBody.tsx'
 import { BrowserTitle } from './view/BrowserTitle.tsx'
 import { createBrowserControllers } from './browser/BrowserController.ts'
@@ -18,6 +20,7 @@ import type { BrowserPageFactory } from './browser/BrowserPage.ts'
 import { BROWSER_ID, browserDefinition } from './definition.tsx'
 import { en, ja, es, fr, de, ru, pt, zh } from './locales.ts'
 import { createBrowserStore } from './browser/store.ts'
+import { parseBrowserAddress } from './browser/url.ts'
 
 export type { BrowserBodyProps } from './view/BrowserBody.tsx'
 export type { BrowserControllerState, BrowserInjected, BrowserMountRequest } from './browser/BrowserController.ts'
@@ -37,7 +40,7 @@ declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
 }
 
 /** Required Browser services. */
-export const inject = ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs']
+export const inject = ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'remote', 'sessions']
 
 /** Register the Browser type, localized guide entry, body, and title. */
 export function apply(ctx: Context): void {
@@ -74,7 +77,10 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.sidebarRightTabs.register({ ...browserDefinition(t), keepMounted: desktop !== undefined }), 'ui-sidebar-browser.type')
   const installFrames = (scope: Context, factory: (sessionId: BrowserBodyProps['sessionId']) => BrowserPageFactory): void => {
     const controllers = new Map<BrowserBodyProps['sessionId'], BrowserInjected>()
+    const mounted = new Set<() => void>()
+    const lifetime = new AbortController()
     scope.effect(() => async () => {
+      lifetime.abort()
       const pending = [...controllers.values()].map(controller => controller.dispose())
       controllers.clear()
       await Promise.all(pending)
@@ -89,10 +95,57 @@ export function apply(ctx: Context): void {
         }
         const controller = createBrowserControllers(actions, factory(sessionId), tabId =>
           openTabs.getSnapshot().some(tab => tab.sessionId === sessionId && tab.tabId === tabId))
-        controllers.set(sessionId, controller)
-        return controller
+        const injected: BrowserInjected = { ...controller, mount(request) {
+          const release = controller.mount(request)
+          for (const listener of mounted) listener()
+          return release
+        } }
+        controllers.set(sessionId, injected)
+        return injected
       },
     }, BrowserBody)), 'ui-sidebar-browser.body')
+    if (desktop !== undefined) scope.remote.$on('sidebar-browser/request', async function (request, next) {
+      const sessionId = scope.sessions.scopeOf(this)
+      if (sessionId === undefined) return next()
+      const signal = AbortSignal.any([request.signal, lifetime.signal])
+      signal.throwIfAborted()
+      const command = request.command
+      const tabs = () => openTabs.getSnapshot().filter(tab => tab.sessionId === sessionId && tab.kind === 'browser')
+      const inventory = () => tabs().map(tab => ({
+        tabId: tab.tabId, url: controllers.get(sessionId)?.controller(tab.tabId)?.getSnapshot().frame.target?.url,
+      }))
+      if (command.action === 'list') return { tabs: inventory() }
+      let tabId = command.tabId as TabId | undefined
+      if (command.action === 'open') {
+        const parsed = parseBrowserAddress(command.url ?? '', location.origin)
+        if (!parsed.ok) throw new Error(`Invalid browser URL: ${parsed.reason}`)
+        const previous = new Set(tabs().map(tab => tab.tabId))
+        scope.sidebarRight.openTabIn(sessionId, 'browser', { params: { url: parsed.target.url } })
+        tabId = tabs().find(tab => !previous.has(tab.tabId))?.tabId
+        if (tabId === undefined) throw new Error('Open this conversation before opening a browser tab.')
+      }
+      if (tabId === undefined || !tabs().some(tab => tab.tabId === tabId)) throw new Error('Browser tab does not belong to this conversation.')
+      if (command.action === 'close') {
+        scope.sidebarRight.closeIn(sessionId, tabId)
+        return { tabs: inventory() }
+      }
+      const id = tabId
+      const controller = await new Promise<NonNullable<ReturnType<BrowserInjected['controller']>>>((resolve, reject) => {
+        const clean = (): void => { mounted.delete(check); unsubscribe(); signal.removeEventListener('abort', cancel) }
+        const cancel = (): void => { clean(); reject(new Error('Browser operation cancelled.', { cause: signal.reason })) }
+        const check = (): void => {
+          if (!tabs().some(tab => tab.tabId === id)) { clean(); reject(new Error('Browser tab was closed.')); return }
+          const value = controllers.get(sessionId)?.controller(id)
+          if (value !== undefined) { clean(); resolve(value) }
+        }
+        const unsubscribe = openTabs.subscribe(check)
+        mounted.add(check)
+        signal.addEventListener('abort', cancel, { once: true })
+        check()
+      })
+      const page = await controller.control({ ...command, action: command.action === 'open' ? 'read' : command.action }, signal)
+      return { tabs: inventory(), tabId: id, page }
+    })
   }
   if (desktop === undefined) installFrames(ctx, () => createIframePage)
   else ctx.inject(['workspaces'], (scope) => {

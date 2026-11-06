@@ -147,6 +147,38 @@ Host 的 `ctx.workspaceFiles` 服务与生成的 `workspaceFiles` Remote 命名�
 - **`browser`**——可多开的 `builtin`，以 `openTab('browser', { params: { url? } })` 打开。Chat 的[链接偏好](../../packages/client/ui-chat/README.zh.md)决定 Assistant Markdown 是否在此打开 HTTP(S) 链接。它在默认 sandbox 下接受公共与 loopback HTTP(S) 目标，本地文件改用 Document Preview，并使用应用已知的 iframe history（[README](../../packages/client/ui-sidebar-browser/README.zh.md)）。
 - **`subagentchat`**——`builtin`，`dsh-resource://subagentchat/session/<child>?parent=<parent>&mode=<mode>`。资源提供方保留一个显式寻址的 subagent Conversation，并通过共享 Conversation Factory 渲染（[README](../../packages/client/ui-subagent/README.zh.md)）。
 
+<!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
+
+<a id="cordis-surface"></a>
+
+## Cordis API
+
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="sidebar-browser-events"></a>
+
+### `sidebar-browser/*` events
+
+<a id="sidebar-browserrequest--waterfall"></a>
+
+#### `sidebar-browser/request` — waterfall
+
+Delegate a browser operation to a desktop connected to this Agent's Session.
+
+```ts cordis-catalog
+/**
+ * Delegate a browser operation to a desktop connected to this Agent's Session.
+ * @param request - command and cancellation lifetime; the Agent identifies the remote scope.
+ * @mode waterfall
+ */
+'sidebar-browser/request'(this: Scoped<Agent>, request: { readonly agent: Agent; readonly command: SidebarBrowserCommand; readonly signal: AbortSignal }, next: () => Promise<SidebarBrowserResult>): Promise<SidebarBrowserResult>
+```
+
+Types: [Agent](core.zh.md) · [Scoped](scope.zh.md)
+
+Source: [`packages/client/ui-sidebar-browser/src/types.ts`](../../packages/client/ui-sidebar-browser/src/types.ts)
+<!-- END GENERATED cordis-surface -->
+
 <a id="not-built"></a>
 ## 不做
 

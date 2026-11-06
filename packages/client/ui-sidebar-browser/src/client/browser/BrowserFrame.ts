@@ -1,6 +1,7 @@
 /** Carrier-neutral page navigation and observable state. */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { BrowserTarget } from './url.ts'
+import type { SidebarBrowserCommand, SidebarBrowserPage } from '../../types.ts'
 
 /** A loading failure, optionally carrying the underlying browser's diagnostic. */
 export interface BrowserLoadError {
@@ -28,6 +29,8 @@ export interface BrowserSandboxControl {
 
 /** Navigation owns page lifetime; mounting and hiding belong to BrowserPresentation. */
 export interface BrowserFrame extends HostObservable<BrowserFrameState> {
+  /** @param command - native guest operation. @param signal - request lifetime. @returns bounded page observation. */
+  control?(command: SidebarBrowserCommand, signal: AbortSignal): Promise<SidebarBrowserPage>
   readonly sandbox?: BrowserSandboxControl
   /** @param target - validated HTTP(S) address; loading failures are published in state. */
   loadUrl(target: BrowserTarget): void

@@ -8,6 +8,7 @@ it('clears a failed load when the main page retries without a toolbar command', 
   let url = 'about:blank'
   let loading = true
   const element: WebviewElement = Object.assign(document.createElement('div'), {
+    executeJavaScript: vi.fn(async () => undefined), sendInputEvent: vi.fn(async () => {}),
     loadURL: vi.fn(async () => {}), getURL: () => url, getTitle: () => 'Recovered',
     canGoBack: () => false, canGoForward: () => false, clearHistory: vi.fn(),
     goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), isLoading: () => loading,

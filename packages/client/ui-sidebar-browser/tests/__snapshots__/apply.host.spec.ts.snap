@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`logs webmcp_execute arguments and serialized page results through native tool execution 1`] = `
+[
+  {
+    "text": "{"tabs":[{"tabId":"tab-1","url":""}],"tabId":"tab-1","page":{"url":"https://example.test/","title":"WebMCP","text":"hello","truncated":false,"elements":[],"webmcp":{"kind":"result","json":"{\\"text\\":\\"hello\\"}","truncated":false}}}",
+    "type": "text",
+  },
+]
+`;
+
+exports[`logs webmcp_list arguments and serialized page results through native tool execution 1`] = `
+[
+  {
+    "text": "{"tabs":[{"tabId":"tab-1","url":""}],"tabId":"tab-1","page":{"url":"https://example.test/","title":"WebMCP","text":"hello","truncated":false,"elements":[],"webmcp":{"kind":"tools","json":"{\\"text\\":\\"hello\\"}","truncated":false}}}",
+    "type": "text",
+  },
+]
+`;
+
+exports[`returns bounded browser observations through native tool execution 1`] = `
+[
+  {
+    "text": "{"tabs":[{"tabId":"tab-1","url":"https://example.test/"}],"tabId":"tab-1","page":{"url":"https://example.test/","title":"Example","text":"Search","truncated":false,"elements":[{"ref":"snapshot:0","tag":"input","label":"Search"}]}}",
+    "type": "text",
+  },
+]
+`;

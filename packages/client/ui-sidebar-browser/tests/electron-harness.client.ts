@@ -31,6 +31,9 @@ export function electronFixture(initial?: BrowserTabState) {
     const element = create(approved)
     const state = { url: 'about:blank', title: '', loading: true, back: false, forward: false }
     const methods = {
+      executeJavaScript: vi.fn(async (_code: string, _gesture: boolean): Promise<unknown> =>
+        ({ url: 'https://example.test/', title: 'Example', text: '', truncated: false, elements: [] })),
+      sendInputEvent: vi.fn(async (_event: { type: 'keyDown' | 'keyUp'; keyCode: string }) => {}),
       loadURL: vi.fn(async (_url: string) => {}), getURL: vi.fn(() => state.url), getTitle: vi.fn(() => state.title),
       canGoBack: () => state.back, canGoForward: () => state.forward, clearHistory: vi.fn(),
       goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), isLoading: () => state.loading,

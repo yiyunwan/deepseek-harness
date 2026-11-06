@@ -11,6 +11,10 @@
     "src/css-modules.d.ts"
   ],
   "references": [
+    { "path": "../../util/crypto" },
+    { "path": "../../api/remotes/tsconfig.client.json" },
+    { "path": "../../core/scope" },
+    { "path": "../../core/agent" },
     { "path": "../../../vendor/cordis" },
     { "path": "../../api/workspace-controller/tsconfig.client.json" },
     { "path": "../../util/brand" },

@@ -21,8 +21,8 @@
   en: fb79cb7d59bc01af
   zh: 5f6202d8b0b62d7d
 /deepseek-ai-dsh-client-ui-sidebar-browser/use-this-package/minimal-configuration:
-  en: abf28ea63777e2a8
-  zh: 1b68bdf5729de71e
+  en: 8176bf43f731f752
+  zh: 9a2c6266984b9646
 /deepseek-ai-dsh-client-ui-sidebar-browser/understand-the-implementation:
   en: 42b15ac6321706aa
   zh: e15901d8462ec7c7
@@ -33,17 +33,41 @@
   en: e535f7330bb62a79
   zh: 485932298fdabaa3
 /deepseek-ai-dsh-client-ui-sidebar-browser/understand-the-implementation/controller:
-  en: 6ddc24ffe34846cd
-  zh: aa81157d18f850cd
+  en: 5d522151bc4b18b7
+  zh: 50b7e1c2c757206c
+/deepseek-ai-dsh-client-ui-sidebar-browser/understand-the-implementation/webmcp:
+  en: 5b3aef6efe0f1046
+  zh: d3132b35c9000f54
 /deepseek-ai-dsh-client-ui-sidebar-browser/further-exploration:
   en: 4ebd881b4ade9d8f
   zh: 715f2553210c08e6
 /deepseek-ai-dsh-client-ui-sidebar-browser/model-experience:
-  en: 69e711858e7d9ebc
-  zh: d84610491e69a35b
-/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/kv-cache-effect:
-  en: e17a5fd3d5405745
-  zh: db957a16dddce770
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-schema:
+  en: e4c7376d4f29dbd5
+  zh: 6b7a9eaf69c9ea53
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-schema/what-the-model-sees:
+  en: ceb9cfc42c2c7255
+  zh: 270c52671de8b92f
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-schema/token-effect:
+  en: f9e51ae000dfab11
+  zh: 9ef6ba054b91a55c
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-schema/kv-cache-effect:
+  en: 006446948c74f693
+  zh: e8ca5297dde4fb66
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-call-history-and-result:
+  en: 9717b983b6a857e3
+  zh: 611a2dadf7c0c706
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-call-history-and-result/what-the-model-sees:
+  en: e4ccc86282c67acb
+  zh: b395c935195d1b00
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-call-history-and-result/token-effect:
+  en: 128122b150d2114f
+  zh: 3ab1537531acdb56
+/deepseek-ai-dsh-client-ui-sidebar-browser/model-experience/tool-call-history-and-result/kv-cache-effect:
+  en: 232a3629908c9c2d
+  zh: b498ff57f99fa300
 /deepseek-ai-dsh-client-ui-sidebar-browser/known-limitations-and-deferred-work:
   en: 307604babbe74f38
   zh: 7d7a5aa4b99964d0

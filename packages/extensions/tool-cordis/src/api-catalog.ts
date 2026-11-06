@@ -5219,6 +5219,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'ns', description: 'Profile entry id.' }, { name: 'revision', description: 'The entry\'s new revision.' }],
   },
   {
+    name: 'sidebar-browser/request',
+    mode: 'waterfall',
+    signature: '\'sidebar-browser/request\'(this: Scoped<Agent>, request: { readonly agent: Agent; readonly command: SidebarBrowserCommand; readonly signal: AbortSignal }, next: () => Promise<SidebarBrowserResult>): Promise<SidebarBrowserResult>',
+    summary: 'Delegate a browser operation to a desktop connected to this Agent\'s Session.',
+    description: 'Delegate a browser operation to a desktop connected to this Agent\'s Session.',
+    parameters: [{ name: 'request', description: 'command and cancellation lifetime; the Agent identifies the remote scope.' }],
+  },
+  {
     name: 'skills/change',
     mode: 'emit',
     signature: '\'skills/change\'(): void',
@@ -8989,6 +8997,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ShellSandboxInfo',
     declaration: 'export interface ShellSandboxInfo {\n    mode: SandboxMode;\n    denied: boolean;\n    enforcement?: SandboxEnforcement;\n    runnerFailed?: boolean;\n}',
+  },
+  {
+    name: 'SidebarBrowserCommand',
+    declaration: 'export interface SidebarBrowserCommand {\n    readonly action: \'list\' | \'open\' | \'close\' | \'read\' | \'navigate\' | \'back\' | \'forward\' | \'reload\' | \'click\' | \'fill\' | \'press\' | \'webmcp_list\' | \'webmcp_execute\';\n    readonly tabId?: string | undefined;\n    readonly url?: string | undefined;\n    readonly ref?: string | undefined;\n    readonly text?: string | undefined;\n    readonly key?: string | undefined;\n    readonly method?: string | undefined;\n    readonly input?: string | undefined;\n    readonly maxText: number;\n    readonly maxElements: number;\n    readonly timeoutMs: number;\n}',
+  },
+  {
+    name: 'SidebarBrowserPage',
+    declaration: 'export interface SidebarBrowserPage {\n    readonly url: string;\n    readonly title: string;\n    readonly text: string;\n    readonly truncated: boolean;\n    readonly elements: {\n        readonly ref: string;\n        readonly tag: string;\n        readonly label: string;\n    }[];\n    readonly webmcp?: {\n        readonly kind: \'tools\' | \'result\';\n        readonly json: string;\n        readonly truncated: boolean;\n    };\n}',
+  },
+  {
+    name: 'SidebarBrowserResult',
+    declaration: 'export interface SidebarBrowserResult {\n    readonly tabs: {\n        readonly tabId: string;\n        readonly url?: string | undefined;\n    }[];\n    readonly tabId?: string;\n    readonly page?: SidebarBrowserPage;\n}',
   },
   {
     name: 'SignInAttemptId',

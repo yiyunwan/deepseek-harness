@@ -33,7 +33,7 @@ Browser 在 Web profile 中默认禁用，在 Desktop 中默认启用。Web 用�
 
 ### 最小配置
 
-本包没有插件配置字段。Web profile 通过其 profile patch 启用随附条目：
+Desktop 无需额外配置即可启用原生 `sidebar_browser` 工具。可选设置 `timeoutMs`（30000）、`maxText`（12000）和 `maxElements`（100）限制等待时长与页面观察量。Web profile 通过其 profile patch 启用随附条目：
 
 ```yaml
 - id: ui-sidebar-browser
@@ -70,7 +70,15 @@ Web 记录 toolbar 提交和 typed tab 打开。导航状态机把每个受控 r
 
 Desktop 主进程批准 guest 租约，并执行挂载、导航和权限策略。preload 只暴露限定范围的 Browser 操作。共享声明通过标准 `/types` 出口配合 `import type` 引入；Host 与 Client 使用独立 tsconfig 编译。Desktop Browser tab 声明 `keepMounted`，Sidebar 因而在切 tab、切 Session、收起与浮动期间保留其 DOM。
 
+浏览器插件在 Host 注册 `sidebar_browser`，在 Client 处理 `sidebar-browser/request`。API remote 事件列表将请求转发到 Agent 已连接的 Session。`ElectronWebViewImpl` 使用自身 webview 的原生导航、JavaScript 执行和输入方法。DOM 操作与 WebMCP 回调在访问页面的主 JavaScript world 执行；观察结果经过校验后才返回 Host。
+
 页面刷新快捷键调用工具栏使用的同一重载操作。其 Tooltip 和 ARIA 组合随有效绑定更新。Desktop 通过所属窗口路由已批准 guest 中的有效快捷键；获焦 webview 必须仍持有该 guest 的租约。Web 保留浏览器专用组合。
+
+### WebMCP
+
+使用 WebMCP 时，先以 `tabId` 调用 `webmcp_list`，再以该 tab、发现的 `method` 和符合其 schema 的 `input` JSON 对象（默认 `{}`）调用 `webmcp_execute`。枚举可按精确 `method` 筛选。页面必须提供当前的 `document.modelContext.getTools()/executeTool()` API，类型来自 `webmcp-types`。原生 API 保留浏览器权限检查。调用在页面主 JavaScript 环境运行，并向 `executeTool()` 传入截止时间信号。
+
+每次响应包含页面观察和 `page.webmcp`：`kind` 为 `tools` 或 `result`，`json` 包含序列化的方法描述或经过 JSON 编码的 `executeTool()` 返回字符串，`truncated` 表明省略了方法或文字。方法描述包含名称、标题、来源、说明、输入 schema 和可用 annotations，不传输 Window 对象或回调。仅选择当前文档注册的方法。`maxElements` 限制枚举数量，`maxText` 独立限制 WebMCP JSON 文字与页面文字。截断的 JSON 可能不完整，可用 `method` 缩小枚举范围。无效返回值、回调错误与文档丢失会使操作失败，不会重复调用。执行可能已经改变页面；再次调用前应检查当前状态。忽略取消信号的方法会使该 tab 保持忙碌，直到方法结束。
 
 </details>
 
@@ -89,11 +97,33 @@ Desktop 主进程批准 guest 租约，并执行挂载、导航和权限策略�
 <a id="model-experience"></a>
 ## 模型体验
 
-无。Browser tab 是用户侧呈现状态，不注册工具、prompt section 或 Session event。
+### 工具 schema
+
+#### 模型看到什么
+
+生成的 [`sidebar_browser` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-client-ui-sidebar-browser) 描述 Session 内的 tab 操作、页面读取和元素引用，并将页面内容标记为不可信的网站数据。
+
+#### Token 影响
+
+在工具可见的每次请求中，固定的工具定义都会占用 token。
 
 #### KV Cache 影响
 
-无；浏览内容不进入模型请求。
+工具可见性和配置不变时，schema 的前缀保持稳定。
+
+### 工具调用历史与结果
+
+#### 模型看到什么
+
+`sidebar_browser` 可列出、打开、关闭和导航本 Session 的 Desktop Browser tab，读取页面文字与交互元素，并执行点击、填写和按键，也可枚举和调用当前页面的 WebMCP 方法。元素引用属于最近一次页面观察，文档变更后失效。工具调用与有上限的结果进入 Session 日志；后台浏览内容不会进入模型。暂不支持 Web 的跨域 iframe 控制、嵌套 frame 和 shadow DOM。超时或中断的操作可能已经改变页面；重复执行前应读取当前状态。
+
+#### Token 影响
+
+调用和 JSON 页面观察追加到历史中。`maxText` 和 `maxElements` 限制每次观察的大小，并标识截断。
+
+#### KV Cache 影响
+
+压缩之前，新的页面观察追加在可复用的请求前缀之后。
 
 ## 已知限制与延期工作
 

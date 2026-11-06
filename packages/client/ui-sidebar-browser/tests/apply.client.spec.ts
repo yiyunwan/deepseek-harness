@@ -15,6 +15,7 @@ import { en, ja, zh, es, fr, de, ru, pt } from '../src/client/locales.ts'
 import { createBrowserStore } from '../src/client/browser/store.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { DesktopBrowserBridge, DesktopBrowserLeaseId } from '../src/types.ts'
+import type { SidebarBrowserCommand, SidebarBrowserResult } from '../src/types.ts'
 
 const contexts: Context[] = []
 
@@ -64,12 +65,32 @@ async function boot(platform: ShortcutPlatform = 'macos', runtime: 'desktop' | '
   ctx.provide('workspaces', { list: createSnapshotStore({ phase: 'ready', items: [] }) } as never)
   ctx.provide('slots', slots as never)
   ctx.provide('locale', locale as never)
+  const remote = { $on: vi.fn<(event: string, listener: (this: Context,
+    request: { agent: Context; command: SidebarBrowserCommand; signal: AbortSignal },
+    next: () => Promise<SidebarBrowserResult>) => Promise<SidebarBrowserResult>) => () => void>(() => () => {}) }
+  ctx.provide('remote', remote as never)
+  ctx.provide('sessions', { scopeOf: vi.fn(() => 'session') } as never)
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  return { tabs, registered, dictionaries, fiber, openTabs, registry, sidebar, target }
+  return { tabs, registered, dictionaries, fiber, openTabs, registry, sidebar, target, remote, ctx }
 }
 
 describe('ui-sidebar-browser apply', () => {
+  it('limits native inventory and operations to the requesting conversation', async () => {
+    vi.stubGlobal('dshDesktop', { protocolVersion: 1, browser: {} })
+    const h = await boot()
+    h.openTabs.set([
+      { sessionId: 'session', tabId: 'mine' as TabId, kind: 'browser' },
+      { sessionId: 'other', tabId: 'foreign' as TabId, kind: 'browser' },
+    ] as never)
+    const listener = h.remote.$on.mock.calls.find(call => call[0] === 'sidebar-browser/request')![1]
+    const request = { agent: h.ctx, signal: new AbortController().signal, command: { action: 'list' as const, maxText: 20, maxElements: 10, timeoutMs: 30000 } }
+    const next = vi.fn(async () => ({ tabs: [] }))
+    expect(await listener.call(h.ctx, request, next)).toEqual({ tabs: [{ tabId: 'mine', url: undefined }] })
+    await expect(listener.call(h.ctx, { ...request, command: { ...request.command, action: 'read', tabId: 'foreign' } }, next))
+      .rejects.toThrow('does not belong')
+    expect(next).not.toHaveBeenCalled()
+  })
   it.each([0, 1])('binds and rebinds session controllers under desktop protocol %s', async (protocolVersion) => {
     const acquire = vi.fn(async () => ({ lease: 'test-lease' as DesktopBrowserLeaseId, partition: 'test-partition' }))
     const bridge: DesktopBrowserBridge = {

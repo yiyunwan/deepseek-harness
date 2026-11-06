@@ -259,6 +259,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'permission-presets': 'permission-presets.md',
   'session': 'session.md',
   'settings': 'settings.md',
+  'sidebar-browser': 'sidebar-right.md',
   'skills': 'skills.md',
   'subagent': 'subagent.md',
   'system-prompt': 'system-prompt.md',
@@ -985,6 +986,8 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
 
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
+  SidebarBrowserCommand: 'Native browser commands are owned by packages/client/ui-sidebar-browser/README.md and src/types.ts',
+  SidebarBrowserResult: 'Native browser observations are owned by packages/client/ui-sidebar-browser/README.md and src/types.ts',
   ActionCardDecision: 'packages/experimental/action-cards/README.md',
   ActionCardKind: 'packages/experimental/action-cards/README.md',
   ActionCardResult: 'packages/experimental/action-cards/README.md',

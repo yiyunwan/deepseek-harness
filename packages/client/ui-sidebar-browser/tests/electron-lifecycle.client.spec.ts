@@ -69,6 +69,44 @@ it('waits for a mounted container and observes native history, titles and new-ta
   expect(h.bridge.release).toHaveBeenCalledExactlyOnceWith(h.reservation.lease)
 })
 
+it('waits for native page readiness and cancels pending control when its frame is disposed', async () => {
+  const h = fixture()
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  const command = { action: 'read' as const, maxText: 20, maxElements: 10, timeoutMs: 30000 }
+  const pending = h.frame.control!(command, new AbortController().signal)
+  const rejected = expect(pending).rejects.toBeDefined()
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+  await h.frame.dispose()
+  await rejected
+  guest.emit('dom-ready')
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+})
+
+it('executes native control only after loading stops on its own webview', async () => {
+  const h = fixture()
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  const command = { action: 'read' as const, maxText: 20, maxElements: 10, timeoutMs: 30000 }
+  const pending = h.frame.control!(command, new AbortController().signal)
+  guest.state.loading = false
+  guest.emit('dom-ready')
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+  guest.emit('did-stop-loading')
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+  guest.state.url = target.url
+  guest.state.loading = true
+  guest.emit('did-navigate')
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+  guest.state.loading = false
+  guest.emit('did-stop-loading')
+  await pending
+  expect(guest.executeJavaScript).toHaveBeenCalledOnce()
+  expect(guest.executeJavaScript.mock.calls[0]?.[1]).toBe(true)
+})
+
 it('releases an acquisition that finishes after attachment cancellation', async () => {
   const h = fixture()
   const pending = Promise.withResolvers<DesktopBrowserReservation>()
@@ -87,6 +125,58 @@ it('releases an acquisition that finishes after attachment cancellation', async 
   } finally {
     pending.resolve(h.reservation)
   }
+})
+
+it('keeps a tab busy after cancellation until its native execution settles', async () => {
+  const h = fixture()
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  guest.state.url = target.url
+  guest.state.loading = false
+  guest.emit('dom-ready')
+  guest.emit('did-navigate')
+  const execution = Promise.withResolvers<unknown>()
+  guest.executeJavaScript.mockReturnValueOnce(execution.promise)
+  const abort = new AbortController()
+  const command = { action: 'read' as const, maxText: 20, maxElements: 10, timeoutMs: 30000 }
+  const pending = h.frame.control!(command, abort.signal)
+  const rejected = expect(pending).rejects.toBeDefined()
+  try {
+    await vi.waitFor(() => { expect(guest.executeJavaScript).toHaveBeenCalledOnce() })
+    abort.abort()
+    await expect(h.frame.control!(command, new AbortController().signal)).rejects.toThrow('still running')
+    execution.resolve({ url: target.url, title: 'Example', text: '', truncated: false, elements: [] })
+    await rejected
+    await h.frame.control!(command, new AbortController().signal)
+    expect(guest.executeJavaScript).toHaveBeenCalledTimes(2)
+  } finally {
+    execution.resolve({ url: target.url, title: 'Example', text: '', truncated: false, elements: [] })
+    await rejected
+  }
+})
+
+it('uses native navigation and reads only after its destination finishes loading', async () => {
+  const h = fixture()
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  guest.state.url = target.url
+  guest.state.loading = false
+  guest.emit('dom-ready')
+  guest.emit('did-navigate')
+  const command = { action: 'navigate' as const, url: 'https://example.test/next', maxText: 20, maxElements: 10, timeoutMs: 30000 }
+  const pending = h.frame.control!(command, new AbortController().signal)
+  await vi.waitFor(() => { expect(guest.loadURL).toHaveBeenCalledWith(command.url) })
+  expect(guest.executeJavaScript).not.toHaveBeenCalled()
+  guest.state.url = command.url
+  guest.state.loading = false
+  guest.emit('did-navigate')
+  guest.emit('did-stop-loading')
+  await pending
+  expect(guest.executeJavaScript).toHaveBeenCalledOnce()
+  await expect(h.frame.control!({ ...command, url: 'file:///etc/passwd' }, new AbortController().signal)).rejects.toThrow('Invalid browser URL')
+  expect(guest.loadURL).not.toHaveBeenCalledWith('file:///etc/passwd')
 })
 
 it('does not acquire a guest when Workspace resolution finishes after disposal', async () => {

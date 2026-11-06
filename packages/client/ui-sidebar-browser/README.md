@@ -33,7 +33,7 @@ Choose Browser for a Web page that should remain beside the current Session. Cho
 
 ### Minimal configuration
 
-The package has no plugin configuration. A Web profile enables the shipped entry through its profile patch:
+Desktop enables the native `sidebar_browser` tool without extra configuration. Optional `timeoutMs` (30000), `maxText` (12000), and `maxElements` (100) settings bound waits and observations. A Web profile enables the shipped entry through its profile patch:
 
 ```yaml
 - id: ui-sidebar-browser
@@ -70,7 +70,15 @@ Each tab's `BrowserController` owns address validation, commands and explicit re
 
 Desktop's main process approves guest leases and enforces attachment, navigation and permission policy. Preload exposes only scoped Browser operations. Shared declarations use the standard `/types` export with `import type`; the Host and Client compile through separate tsconfig files. Desktop Browser tabs declare `keepMounted`, so Sidebar preserves their DOM across tab changes, Session switches, collapse and floating.
 
+The browser plugin registers `sidebar_browser` on the Host and handles `sidebar-browser/request` on the Client. The API remote event list forwards that request to the Agent's connected Session. `ElectronWebViewImpl` uses the owned webview's native navigation, JavaScript execution and input methods. DOM operations and WebMCP callbacks run in the visited page's main JavaScript world; observations are validated before returning to the Host.
+
 The page refresh shortcut calls the same reload operation as the toolbar. Its tooltip and ARIA key combination follow the effective binding. Desktop routes accepted shortcuts from an approved guest through its owning window; the focused webview must still carry that guest’s lease. Web leaves browser-reserved combinations unchanged.
+
+### WebMCP
+
+For WebMCP, call `webmcp_list` with a `tabId`, then `webmcp_execute` with that tab, a discovered `method`, and an `input` JSON object matching its schema (default `{}`). Discovery optionally filters by exact `method`. The page must expose the current `document.modelContext.getTools()/executeTool()` API, typed by `webmcp-types`. Native APIs keep their browser permission checks. Calls run in the page's main JavaScript world and pass a deadline signal to `executeTool()`.
+
+Each response includes a page observation and `page.webmcp`: `kind` is `tools` or `result`, `json` contains serialized descriptors or the JSON-encoded string returned by `executeTool()`, and `truncated` reports omitted methods or text. Descriptors include names, titles, origins, descriptions, input schemas, and available annotations; Window objects and callbacks are excluded. Only tools registered in the current document are selected. `maxElements` limits discovery and `maxText` limits WebMCP JSON text independently of page text. Truncated JSON may be incomplete; narrow discovery with `method`. Invalid results, callback errors, and document loss fail the operation without repeating it. Execution may already have changed the page; inspect its state before another invocation. A method that ignores cancellation keeps the tab busy until it settles.
 
 </details>
 
@@ -89,11 +97,33 @@ The page refresh shortcut calls the same reload operation as the toolbar. Its to
 <a id="model-experience"></a>
 ## Model Experience
 
-None, as Browser tabs are user-facing presentation state and register no tool, prompt section, or Session event.
+### Tool schema
+
+#### What the model sees
+
+The generated [`sidebar_browser` schema](../../../docs/tool-catalog.md#deepseek-aidsh-client-ui-sidebar-browser) describes Session-local tab operations, page reads and element references. It identifies visited page content as untrusted website data.
+
+#### Token effect
+
+The fixed tool definition contributes tokens to each request where the tool is visible.
 
 #### KV Cache effect
 
-None; browsing does not enter a model request.
+The schema remains prefix-stable while tool visibility and configuration remain unchanged.
+
+### Tool-call history and result
+
+#### What the model sees
+
+`sidebar_browser` lists, opens, closes and navigates this Session's Desktop Browser tabs, reads page text and interactive elements, and clicks, fills or presses keys. It also discovers and invokes the current page's WebMCP methods. Element references belong to the most recent observation and expire when its document changes. Tool calls and bounded results enter the Session log; no background browsing content enters the model. Cross-origin iframe control in Web, nested frames and shadow DOM are unsupported. A timed-out or interrupted action may already have changed the page; read its current state before repeating it.
+
+#### Token effect
+
+Calls and JSON observations append to history. `maxText` and `maxElements` bound each observation and expose truncation.
+
+#### KV Cache effect
+
+New observations follow the reusable request prefix until compaction.
 
 ## Known Limitations and Deferred Work
 

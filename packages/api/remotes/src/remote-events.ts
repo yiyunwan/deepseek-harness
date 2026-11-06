@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-plugin-market/types'
 import type {} from '@deepseek-ai/dsh-schedule/client'
 import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-web/types'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-browser/types'
 
 /**
  * Host events this application forwards without renaming. The explicit mode is
@@ -27,6 +28,7 @@ import type {} from '@deepseek-ai/dsh-web/types'
 export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'agent-preset/selected', mode: 'emit' },
   { event: 'approval/request', mode: 'waterfall' },
+  { event: 'sidebar-browser/request', mode: 'waterfall' },
   { event: 'api-session/activity', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'api-session/added', mode: 'emit', resources: { session: (summary): SessionId => summary.sessionId } },
   { event: 'api-session/error', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },

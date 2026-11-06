@@ -7,6 +7,7 @@ import type { BrowserPage, BrowserPageFactory } from './BrowserPage.ts'
 import { currentBrowserTarget, type BrowserTabState } from './BrowserPersistence.ts'
 import type { BrowserStore } from './store.ts'
 import { parseBrowserAddress, type BrowserAddressFailure, type BrowserTarget } from './url.ts'
+import type { SidebarBrowserCommand, SidebarBrowserPage } from '../../types.ts'
 
 /** Live tab state; navigation comes from its provider and draft validation stays local. */
 export interface BrowserControllerState {
@@ -76,6 +77,17 @@ export class BrowserController implements HostObservable<BrowserControllerState>
   getSnapshot = (): BrowserControllerState => this.store.getSnapshot()
   /** @param listener - state invalidation. @returns unsubscribe callback. */
   subscribe = (listener: () => void): (() => void) => this.store.subscribe(listener)
+
+  /**
+   * Control this tab through its native page provider.
+   * @param command - native page operation.
+   * @param signal - cancellation lifetime.
+   * @returns page observation.
+   */
+  control(command: SidebarBrowserCommand, signal: AbortSignal): Promise<SidebarBrowserPage> {
+    if (this.disposed || this.page.frame.control === undefined) throw new Error('Browser tab is unavailable.')
+    return this.page.frame.control(command, signal)
+  }
 
   /**
    * Attach the page without transferring ownership of its tab occurrence.
@@ -181,6 +193,12 @@ export interface BrowserMountRequest {
 
 /** Plain Slot callbacks and a framework-bound state source, not a desktop protocol. */
 export interface BrowserInjected {
+  /**
+   * Locate the native controller for an open tab.
+   * @param tabId - open tab occurrence.
+   * @returns mounted controller, when available.
+   */
+  controller(tabId: TabId): BrowserController | undefined
   readonly keyedHooks: {
     readonly browserState: (key: string) => HostObservable<BrowserControllerState> | undefined
   }
@@ -221,6 +239,7 @@ export function createBrowserControllers(actions: BoundActions<BrowserStore>, cr
   }>()
   const controller = (id: TabId): BrowserController | undefined => controllers.get(id)?.controller
   return {
+    controller,
     keyedHooks: { browserState: key => controller(key as TabId) },
     mount(request) {
       const { tabId, signal } = request
